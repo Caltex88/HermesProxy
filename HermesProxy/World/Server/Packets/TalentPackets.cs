@@ -61,6 +61,76 @@ public sealed class LearnPetTalent : ClientPacket
     }
 }
 
+// Native 3.4.3 TalentInfo (lineagedr/3.4.3_Source TalentPackets.h:30-34 and
+// TalentPackets.cpp:28-32): uint32 TalentID + uint8 Rank. Shared by the player
+// and pet preview-apply packets. Cap matches Array<TalentInfo, 60>.
+internal static class PreviewTalentCodec
+{
+    public const int MaxTalents = 60;
+
+    public static List<TalentEntry> ReadList(WorldPacket packet)
+    {
+        uint count = packet.ReadUInt32();
+        if (count > MaxTalents)
+            count = MaxTalents;
+
+        var talents = new List<TalentEntry>((int)count);
+        for (uint i = 0; i < count; i++)
+        {
+            if (!packet.CanRead(5))
+                break;
+            talents.Add(new TalentEntry
+            {
+                TalentID = packet.ReadUInt32(),
+                Rank = packet.ReadUInt8(),
+            });
+        }
+        return talents;
+    }
+
+    // 3.3.5a CMSG_LEARN_PREVIEW_TALENTS body (wow_messages): uint32 count, then
+    // count × { uint32 talentId, uint32 rank }. Rank is widened from the modern uint8.
+    public static void WriteLegacyList(WorldPacket packet, List<TalentEntry> talents)
+    {
+        packet.WriteUInt32((uint)talents.Count);
+        foreach (var talent in talents)
+        {
+            packet.WriteUInt32(talent.TalentID);
+            packet.WriteUInt32(talent.Rank);
+        }
+    }
+}
+
+// Modern V3_4_3 CMSG_LEARN_PREVIEW_TALENTS (0x3553 / 13651). This is the
+// talent-panel Apply / Learn button. Selecting a talent only previews locally;
+// nothing is committed until this packet lands. Layout from native Wrathion
+// TalentPackets.cpp:105-110: uint32 count, then count × TalentInfo.
+public sealed class LearnPreviewTalents : ClientPacket
+{
+    public List<TalentEntry> Talents = new();
+
+    public LearnPreviewTalents(WorldPacket packet) : base(packet) { }
+
+    public override void Read() => Talents = PreviewTalentCodec.ReadList(_worldPacket);
+}
+
+// Modern V3_4_3 CMSG_LEARN_PREVIEW_TALENTS_PET (0x3555 / 13653). Same TalentInfo
+// body as the player apply packet, with a leading PackedGuid128 pet GUID
+// (TalentPackets.cpp:95-99).
+public sealed class LearnPetPreviewTalents : ClientPacket
+{
+    public WowGuid128 PetGUID = WowGuid128.Empty;
+    public List<TalentEntry> Talents = new();
+
+    public LearnPetPreviewTalents(WorldPacket packet) : base(packet) { }
+
+    public override void Read()
+    {
+        PetGUID = _worldPacket.ReadPackedGuid128();
+        Talents = PreviewTalentCodec.ReadList(_worldPacket);
+    }
+}
+
 // Modern V3_4_3.54261 SMSG_UPDATE_TALENT_DATA. Layout matches WPP's V3_4_0 parser
 // (canonical reader): X:/Programming/RioMcBoo/WowPacketParser/WowPacketParserModule.V3_4_0_45166/Parsers/SpellHandler.cs:436-475
 // (ReadTalentInfoUpdate). Two fields are V3_4_4_59817+ only and MUST NOT be emitted
