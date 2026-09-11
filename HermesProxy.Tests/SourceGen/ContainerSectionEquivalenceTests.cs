@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using HermesProxy;
 using HermesProxy.Enums;
 using HermesProxy.World;
@@ -65,18 +65,18 @@ public class ContainerSectionEquivalenceTests
 
     [Theory]
     [MemberData(nameof(CreateScenarios))]
-    public void WriteCreateContainerData_GeneratedMatchesHandPort(string _label, System.Action<ContainerData> populate)
+    public void WriteCreateContainerData_GeneratedMatchesHandPort(string _, System.Action<ContainerData> populate)
     {
         var session = CreateGameSession();
         var guid = WowGuid128.Create(HighGuidType703.Item, 1);
         var builder = MakeBuilder(guid, session, out var update);
-        populate(update.ContainerData!);
+        populate(update.EnsureContainerData());
 
         var actual = new WorldPacket();
         builder.WriteCreateContainerData(actual);
 
         var expected = new WorldPacket();
-        WriteCreateContainerData_HandPort(expected, update.ContainerData!);
+        WriteCreateContainerData_HandPort(expected, update.EnsureContainerData());
 
         Assert.Equal(expected.GetData(), actual.GetData());
     }
@@ -105,18 +105,18 @@ public class ContainerSectionEquivalenceTests
 
     [Theory]
     [MemberData(nameof(UpdateScenarios))]
-    public void WriteUpdateContainerData_GeneratedMatchesHandPort(string _label, System.Action<ContainerData> populate)
+    public void WriteUpdateContainerData_GeneratedMatchesHandPort(string _, System.Action<ContainerData> populate)
     {
         var session = CreateGameSession();
         var guid = WowGuid128.Create(HighGuidType703.Item, 1);
         var builder = MakeBuilder(guid, session, out var update);
-        populate(update.ContainerData!);
+        populate(update.EnsureContainerData());
 
         var actual = new WorldPacket();
         builder.WriteUpdateContainerData(actual);
 
         var expected = new WorldPacket();
-        WriteUpdateContainerData_HandPort(expected, update.ContainerData!);
+        WriteUpdateContainerData_HandPort(expected, update.EnsureContainerData());
 
         Assert.Equal(expected.GetData(), actual.GetData());
     }
@@ -127,14 +127,14 @@ public class ContainerSectionEquivalenceTests
 
     [Theory]
     [MemberData(nameof(UpdateScenarios))]
-    public void HasAnyContainerFieldSet_GeneratedMatchesHandPort(string _label, System.Action<ContainerData> populate)
+    public void HasAnyContainerFieldSet_GeneratedMatchesHandPort(string _, System.Action<ContainerData> populate)
     {
         var session = CreateGameSession();
         var guid = WowGuid128.Create(HighGuidType703.Item, 1);
         var builder = MakeBuilder(guid, session, out var update);
-        populate(update.ContainerData!);
+        populate(update.EnsureContainerData());
 
-        Assert.Equal(HasAnyContainerFieldSet_HandPort(update.ContainerData!), builder.HasAnyContainerFieldSet());
+        Assert.Equal(HasAnyContainerFieldSet_HandPort(update.EnsureContainerData()), builder.HasAnyContainerFieldSet());
     }
 
     // ---------------------------------------------------------------------

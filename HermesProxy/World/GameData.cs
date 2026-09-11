@@ -13,6 +13,7 @@ using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -637,7 +638,11 @@ public static partial class GameData
         return 10;
     }
 
-    private static int EstimateAvgBytesPerRow<T>()
+    // Tells the trimmer to keep the public fields/properties the row-size estimate reflects over.
+    private const DynamicallyAccessedMemberTypes RowMembers =
+        DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties;
+
+    private static int EstimateAvgBytesPerRow<[DynamicallyAccessedMembers(RowMembers)] T>()
     {
         int bytes = 0;
         foreach (var field in typeof(T).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
@@ -657,7 +662,7 @@ public static partial class GameData
         return (int)(fileSize / avgBytesPerRow);
     }
 
-    private static int EstimateRowCount<T>(string path) => EstimateRowCount(path, EstimateAvgBytesPerRow<T>());
+    private static int EstimateRowCount<[DynamicallyAccessedMembers(RowMembers)] T>(string path) => EstimateRowCount(path, EstimateAvgBytesPerRow<T>());
 
     public static void LoadEverything()
     {
@@ -3893,7 +3898,18 @@ public static partial class GameData
 
     public static List<HotfixRecord> FindHotfixesByRecordIdAndTable(uint id, DB2Hash table, uint startId = 0)
     {
-        return Hotfixes.Values.Where(hotfix => hotfix.HotfixId >= startId && hotfix.TableHash == table && hotfix.RecordId == id).ToList();
+        // Enumerate the dictionary itself. ConcurrentDictionary.Values takes every lock and copies
+        // the whole store (tens of thousands of records) into a new list before anything is
+        // filtered, and the item-query path runs this twice per hotfix. The enumerator walks the
+        // same buckets in the same order without locking or copying; UpdateHotfix depends on that
+        // order, since it keeps the last match and invalidates the rest.
+        var found = new List<HotfixRecord>();
+        foreach (var (_, hotfix) in Hotfixes)
+        {
+            if (hotfix.HotfixId >= startId && hotfix.TableHash == table && hotfix.RecordId == id)
+                found.Add(hotfix);
+        }
+        return found;
     }
 
     public static void UpdateHotfix(object obj, bool remove = false)

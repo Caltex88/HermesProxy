@@ -594,11 +594,11 @@ public partial class ObjectUpdateBuilder
     {
         for (int l = 0; l < 3; l++)
         {
-            int vItemId = src.VirtualItems != null && src.VirtualItems[l] is VisibleItem vi ? vi.ItemID : 0;
+            int vItemId = src.VirtualItems[l] is VisibleItem vi ? vi.ItemID : 0;
             // Players don't populate VirtualItems server-side (use PLAYER_VISIBLE_ITEM
             // descriptors instead). For the local player, fall back to PlayerData.VisibleItems:
             // slot 0=mainhand(15), 1=offhand(16), 2=ranged(17).
-            if (vItemId == 0 && IsOwner && _updateData.PlayerData?.VisibleItems != null)
+            if (vItemId == 0 && IsOwner && _updateData.PlayerData != null)
             {
                 int playerSlot = 15 + l;
                 if (playerSlot < _updateData.PlayerData.VisibleItems.Length
@@ -622,7 +622,7 @@ public partial class ObjectUpdateBuilder
     {
         // IF IsOwner: bow-default fallback. Generator wraps in if (IsOwner) already.
         uint rangedTime = src.RangedAttackRoundBaseTime.GetValueOrDefault();
-        if (rangedTime == 0 && _updateData.PlayerData?.VisibleItems != null
+        if (rangedTime == 0 && _updateData.PlayerData != null
             && _updateData.PlayerData.VisibleItems.Length > 17
             && _updateData.PlayerData.VisibleItems[17] is VisibleItem ranged && ranged.ItemID != 0)
         {
@@ -636,9 +636,9 @@ public partial class ObjectUpdateBuilder
         // IF IsOwner: 5 slots × (Stats[n], StatPosBuff[n], StatNegBuff[n]).
         for (int n = 0; n < 5; n++)
         {
-            data.WriteInt32(src.Stats?[n].GetValueOrDefault() ?? 0);
-            data.WriteInt32(src.StatPosBuff?[n].GetValueOrDefault() ?? 0);
-            data.WriteInt32(src.StatNegBuff?[n].GetValueOrDefault() ?? 0);
+            data.WriteInt32(src.Stats[n].GetValueOrDefault());
+            data.WriteInt32(src.StatPosBuff[n].GetValueOrDefault());
+            data.WriteInt32(src.StatNegBuff[n].GetValueOrDefault());
         }
     }
 
@@ -646,7 +646,7 @@ public partial class ObjectUpdateBuilder
     {
         // IF IsOwner: 7× Resistances Int32.
         for (int r = 0; r < 7; r++)
-            data.WriteInt32(src.Resistances?[r].GetValueOrDefault() ?? 0);
+            data.WriteInt32(src.Resistances[r].GetValueOrDefault());
     }
 
     internal void WriteCreateUnitPowerCostInterleaved(WorldPacket data, UnitData src)
@@ -654,8 +654,8 @@ public partial class ObjectUpdateBuilder
         // IF IsOwner: 7 slots × (PowerCostModifier[p] Int32, PowerCostMultiplier[p] Float).
         for (int p = 0; p < 7; p++)
         {
-            data.WriteInt32(src.PowerCostModifier?[p].GetValueOrDefault() ?? 0);
-            data.WriteFloat(src.PowerCostMultiplier?[p].GetValueOrDefault() ?? 0f);
+            data.WriteInt32(src.PowerCostModifier[p].GetValueOrDefault());
+            data.WriteFloat(src.PowerCostMultiplier[p].GetValueOrDefault());
         }
     }
 
@@ -664,8 +664,8 @@ public partial class ObjectUpdateBuilder
         // 7 slots × (ResistanceBuffModsPositive[b] Int32, ResistanceBuffModsNegative[b] Int32).
         for (int b = 0; b < 7; b++)
         {
-            data.WriteInt32(src.ResistanceBuffModsPositive?[b].GetValueOrDefault() ?? 0);
-            data.WriteInt32(src.ResistanceBuffModsNegative?[b].GetValueOrDefault() ?? 0);
+            data.WriteInt32(src.ResistanceBuffModsPositive[b].GetValueOrDefault());
+            data.WriteInt32(src.ResistanceBuffModsNegative[b].GetValueOrDefault());
         }
     }
 
@@ -719,7 +719,7 @@ public partial class ObjectUpdateBuilder
         data.WritePackedGuid128(src.ChannelObject.Value);
     }
 
-    internal void WriteUpdateUnitVirtualItem(WorldPacket data, System.Nullable<VisibleItem>[] arr, int i)
+    internal void WriteUpdateUnitVirtualItem(WorldPacket data, ReadOnlySpan<VisibleItem?> arr, int i)
     {
         // VirtualItem inner mask: 4-bit (bit 0 = group, 1 = ItemID present). Hand-port
         // (file:2308-2316 pre-delete) emits mask 0x03 then Int32 ItemID.
@@ -732,15 +732,15 @@ public partial class ObjectUpdateBuilder
     internal void WriteUpdateUnitPowerGroup(WorldPacket data, ref Framework.Util.StackBitMask blocks, UnitData src)
     {
         int maxLen = 7;
-        if (src.Power != null && src.Power.Length > maxLen) maxLen = src.Power.Length;
-        if (src.MaxPower != null && src.MaxPower.Length > maxLen) maxLen = src.MaxPower.Length;
+        if (src.Power.Length > maxLen) maxLen = src.Power.Length;
+        if (src.MaxPower.Length > maxLen) maxLen = src.MaxPower.Length;
         for (int pi = 0; pi < maxLen; pi++)
         {
-            if (src.Power != null && pi < src.Power.Length && src.Power[pi].HasValue)
+            if (pi < src.Power.Length && src.Power[pi].HasValue)
                 data.WriteInt32(src.Power[pi].Value);
-            if (src.MaxPower != null && pi < src.MaxPower.Length && src.MaxPower[pi].HasValue)
+            if (pi < src.MaxPower.Length && src.MaxPower[pi].HasValue)
                 data.WriteInt32(src.MaxPower[pi].Value);
-            if (src.ModPowerRegen != null && pi < src.ModPowerRegen.Length && src.ModPowerRegen[pi].HasValue)
+            if (pi < src.ModPowerRegen.Length && src.ModPowerRegen[pi].HasValue)
                 data.WriteFloat(src.ModPowerRegen[pi].Value);
         }
     }
@@ -749,9 +749,9 @@ public partial class ObjectUpdateBuilder
     {
         for (int i = 0; i < 5; i++)
         {
-            if (src.Stats != null && src.Stats[i].HasValue) data.WriteInt32(src.Stats[i].Value);
-            if (src.StatPosBuff != null && src.StatPosBuff[i].HasValue) data.WriteInt32(src.StatPosBuff[i].Value);
-            if (src.StatNegBuff != null && src.StatNegBuff[i].HasValue) data.WriteInt32(src.StatNegBuff[i].Value);
+            if (src.Stats[i].HasValue) data.WriteInt32(src.Stats[i].Value);
+            if (src.StatPosBuff[i].HasValue) data.WriteInt32(src.StatPosBuff[i].Value);
+            if (src.StatNegBuff[i].HasValue) data.WriteInt32(src.StatNegBuff[i].Value);
         }
     }
 
@@ -759,9 +759,9 @@ public partial class ObjectUpdateBuilder
     {
         for (int i = 0; i < 7; i++)
         {
-            if (src.Resistances != null && src.Resistances[i].HasValue) data.WriteInt32(src.Resistances[i].Value);
-            if (src.PowerCostModifier != null && src.PowerCostModifier[i].HasValue) data.WriteInt32(src.PowerCostModifier[i].Value);
-            if (src.PowerCostMultiplier != null && src.PowerCostMultiplier[i].HasValue) data.WriteFloat(src.PowerCostMultiplier[i].Value);
+            if (src.Resistances[i].HasValue) data.WriteInt32(src.Resistances[i].Value);
+            if (src.PowerCostModifier[i].HasValue) data.WriteInt32(src.PowerCostModifier[i].Value);
+            if (src.PowerCostMultiplier[i].HasValue) data.WriteFloat(src.PowerCostMultiplier[i].Value);
         }
     }
 
@@ -769,8 +769,8 @@ public partial class ObjectUpdateBuilder
     {
         for (int i = 0; i < 7; i++)
         {
-            if (src.ResistanceBuffModsPositive != null && src.ResistanceBuffModsPositive[i].HasValue) data.WriteInt32(src.ResistanceBuffModsPositive[i].Value);
-            if (src.ResistanceBuffModsNegative != null && src.ResistanceBuffModsNegative[i].HasValue) data.WriteInt32(src.ResistanceBuffModsNegative[i].Value);
+            if (src.ResistanceBuffModsPositive[i].HasValue) data.WriteInt32(src.ResistanceBuffModsPositive[i].Value);
+            if (src.ResistanceBuffModsNegative[i].HasValue) data.WriteInt32(src.ResistanceBuffModsNegative[i].Value);
         }
     }
 
@@ -833,9 +833,6 @@ public partial class ObjectUpdateBuilder
 
     private static uint GetPlayerCustomizationsSize(PlayerData src)
     {
-        if (src.Customizations == null)
-            return 0;
-
         uint size = 0;
         for (int i = 0; i < src.Customizations.Length; i++)
             if (src.Customizations[i] != null)
@@ -858,9 +855,6 @@ public partial class ObjectUpdateBuilder
 
     internal void WriteUpdatePlayerCustomizationsBody(WorldPacket data, PlayerData src)
     {
-        if (src.Customizations == null)
-            return;
-
         // ChrCustomizationChoice::WriteUpdate (UpdateFields.cpp:1626) is two bare uint32s —
         // the struct carries no changesMask of its own, unlike SocketedGem.
         for (int i = 0; i < src.Customizations.Length; i++)
@@ -877,17 +871,13 @@ public partial class ObjectUpdateBuilder
     internal void WriteCreatePlayerCustomizationsCount(WorldPacket data, PlayerData src)
     {
         int customizationCount = 0;
-        if (src.Customizations != null)
-        {
-            for (int i = 0; i < src.Customizations.Length; i++)
-                if (src.Customizations[i] != null) customizationCount++;
-        }
+        for (int i = 0; i < src.Customizations.Length; i++)
+            if (src.Customizations[i] != null) customizationCount++;
         data.WriteUInt32((uint)customizationCount);
     }
 
     internal void WriteCreatePlayerCustomizationsData(WorldPacket data, PlayerData src)
     {
-        if (src.Customizations == null) return;
         for (int m = 0; m < src.Customizations.Length; m++)
         {
             var choice = src.Customizations[m];
@@ -930,7 +920,7 @@ public partial class ObjectUpdateBuilder
         // 25 quest slots, writing each entry's 4 fields. Null entries write zeros.
         for (int q = 0; q < QuestConst.MaxQuestLogSize; q++)
         {
-            var quest = src.QuestLog != null && q < src.QuestLog.Length ? src.QuestLog[q] : null;
+            var quest = q < src.QuestLog.Length ? src.QuestLog[q] : null;
             data.WriteInt64(quest?.EndTime ?? 0);
             data.WriteInt32(quest?.QuestID ?? 0);
             data.WriteUInt32(quest?.StateFlags ?? 0);
@@ -944,8 +934,7 @@ public partial class ObjectUpdateBuilder
         // 19× always-write. Null entry → zero placeholder (Int32 ItemID + 2× UInt16 0).
         for (int j = 0; j < 19; j++)
         {
-            if (src.VisibleItems != null && j < src.VisibleItems.Length
-                && src.VisibleItems[j] is VisibleItem pv)
+            if (j < src.VisibleItems.Length && src.VisibleItems[j] is VisibleItem pv)
             {
                 data.WriteInt32(pv.ItemID);
                 data.WriteUInt16(pv.ItemAppearanceModID);
@@ -974,7 +963,7 @@ public partial class ObjectUpdateBuilder
             : WowGuid128.Empty);
     }
 
-    internal void WriteUpdatePlayerQuestLogEntry(WorldPacket data, QuestLog[] arr, int i)
+    internal void WriteUpdatePlayerQuestLogEntry(WorldPacket data, ReadOnlySpan<QuestLog> arr, int i)
     {
         // Per-element write at bit 36+i. Same shape as hand-port file:1576-1583 — uses
         // WriteCreate format (no inner mask, raw fields) per IsQuestLogChangesMaskSkipped = 1.
@@ -986,7 +975,7 @@ public partial class ObjectUpdateBuilder
             data.WriteUInt16((ushort)(quest?.ObjectiveProgress[obj] ?? 0));
     }
 
-    internal void WriteUpdatePlayerVisibleItem(WorldPacket data, System.Nullable<VisibleItem>[] arr, int i)
+    internal void WriteUpdatePlayerVisibleItem(WorldPacket data, ReadOnlySpan<VisibleItem?> arr, int i)
     {
         // Per-element write at bit 62+i. Inner 4-bit mask (0x0F = all 4 bits set) +
         // FlushBits + Int32 ItemID + UInt16 ItemAppearanceModID + UInt16 ItemVisual.
@@ -1061,7 +1050,7 @@ public partial class ObjectUpdateBuilder
     // written earlier by the resize prefixes, so payload length has to agree with them.
     internal void WriteCreateActivePlayerDynamicPayloads(WorldPacket data, ActivePlayerData src)
     {
-        ulong[] foldedTitles = new ulong[6];
+        Span<ulong> foldedTitles = stackalloc ulong[6];
         int knownTitlesCount = FoldKnownTitles(src.KnownTitles, foldedTitles);
         for (int i = 0; i < knownTitlesCount; i++)
             data.WriteUInt64(foldedTitles[i]);
@@ -1120,7 +1109,7 @@ public partial class ObjectUpdateBuilder
     // both writers self-contained instead of threading a local across the whole block.
     internal void WriteCreateActivePlayerKnownTitlesCount(WorldPacket data, ActivePlayerData src)
     {
-        ulong[] folded = new ulong[6];
+        Span<ulong> folded = stackalloc ulong[6];
         data.WriteUInt32((uint)FoldKnownTitles(src.KnownTitles, folded));
     }
 
@@ -1215,7 +1204,7 @@ public partial class ObjectUpdateBuilder
 
     // Folds KnownTitles uint?[12] → ulong[6] (lo + hi<<32 per pair). Used by both
     // preamble (count) and body (data).
-    internal static int FoldKnownTitles(uint?[] knownTitles, ulong[] dest)
+    internal static int FoldKnownTitles(uint?[] knownTitles, Span<ulong> dest)
     {
         if (knownTitles == null)
             return 0;
@@ -1249,7 +1238,7 @@ public partial class ObjectUpdateBuilder
     // Emits: WriteBits(count, 32) + count× WriteBit(true).
     internal void WriteUpdateActivePlayerKnownTitlesPreamble(WorldPacket data, ref Framework.Util.StackBitMask blocks, ActivePlayerData src)
     {
-        ulong[] folded = new ulong[6];
+        Span<ulong> folded = stackalloc ulong[6];
         int count = FoldKnownTitles(src.KnownTitles, folded);
         data.WriteBits((uint)count, 32);
         for (int i = 0; i < count; i++)
@@ -1259,7 +1248,7 @@ public partial class ObjectUpdateBuilder
     // KnownTitles body — count× WriteUInt64(folded[i]).
     internal void WriteUpdateActivePlayerKnownTitlesBody(WorldPacket data, ActivePlayerData src)
     {
-        ulong[] folded = new ulong[6];
+        Span<ulong> folded = stackalloc ulong[6];
         int count = FoldKnownTitles(src.KnownTitles, folded);
         for (int i = 0; i < count; i++)
             data.WriteUInt64(folded[i]);
@@ -1535,46 +1524,46 @@ public partial class ObjectUpdateBuilder
     private void WriteValuesCreate(WorldPacket data)
     {
         var effectiveMask = _objectTypeMask;
-        bool trace = _objectType == ObjectTypeBCC.ActivePlayer;
+        bool trace = _objectType == ObjectTypeBCC.ActivePlayer && Framework.Logging.Log.IsTraceEnabled;
 
         byte updateFieldFlags = (byte)FieldVisibilityFlags;
         data.WriteUInt8(updateFieldFlags);
 
-        int p0 = data.GetData().Length;
+        int p0 = data.GetWrittenLength();
         WriteCreateObjectData(data);
-        int p1 = data.GetData().Length;
+        int p1 = data.GetWrittenLength();
 
         if (effectiveMask.HasAnyFlag(ObjectTypeMask.Item))
             WriteCreateItemData(data);
-        int p2 = data.GetData().Length;
+        int p2 = data.GetWrittenLength();
 
         if (effectiveMask.HasAnyFlag(ObjectTypeMask.Container))
             WriteCreateContainerData(data);
-        int p3 = data.GetData().Length;
+        int p3 = data.GetWrittenLength();
 
         if (effectiveMask.HasAnyFlag(ObjectTypeMask.Unit))
             WriteCreateUnitData(data);
-        int p4 = data.GetData().Length;
+        int p4 = data.GetWrittenLength();
 
         if (effectiveMask.HasAnyFlag(ObjectTypeMask.Player))
             WriteCreatePlayerData(data);
-        int p5 = data.GetData().Length;
+        int p5 = data.GetWrittenLength();
 
         if (effectiveMask.HasAnyFlag(ObjectTypeMask.ActivePlayer))
             WriteCreateActivePlayerData(data);
-        int p6 = data.GetData().Length;
+        int p6 = data.GetWrittenLength();
 
         if (_objectTypeMask.HasAnyFlag(ObjectTypeMask.GameObject))
             WriteCreateGameObjectData(data);
-        int p7 = data.GetData().Length;
+        int p7 = data.GetWrittenLength();
 
         if (_objectTypeMask.HasAnyFlag(ObjectTypeMask.DynamicObject))
             WriteCreateDynamicObjectData(data);
-        int p8 = data.GetData().Length;
+        int p8 = data.GetWrittenLength();
 
         if (_objectTypeMask.HasAnyFlag(ObjectTypeMask.Corpse))
             WriteCreateCorpseData(data);
-        int p9 = data.GetData().Length;
+        int p9 = data.GetWrittenLength();
 
         // Phase 5a diagnostic — per-section byte sizes for the ActivePlayer create
         // packet. Used to bisect which descriptor section diverges from the V3_4_3
@@ -1583,7 +1572,7 @@ public partial class ObjectUpdateBuilder
         // ends with unflushed bits — acceptable for first-pass bisection.
         if (trace)
         {
-            byte[] buf = data.GetData();
+            ReadOnlySpan<byte> buf = data.GetDataSpan();
             Framework.Logging.Log.Print(Framework.Logging.LogType.Trace,
                 $"[Phase5aTrace] sections flags=1 obj={p1 - p0} item={p2 - p1} container={p3 - p2} " +
                 $"unit={p4 - p3} player={p5 - p4} active={p6 - p5} " +
@@ -1596,12 +1585,14 @@ public partial class ObjectUpdateBuilder
         }
     }
 
-    private static void DumpSectionHead(byte[] buf, int start, int end, string label)
+    private static void DumpSectionHead(ReadOnlySpan<byte> buf, int start, int end, string label)
     {
         int len = end - start;
         if (len <= 0) return;
         int dumpLen = Math.Min(64, len);
-        string hex = BitConverter.ToString(buf, start, dumpLen);
+        // Copy only the window being dumped -- BitConverter.ToString needs an array, but the
+        // whole packet does not have to become one to hex 64 bytes of it.
+        string hex = BitConverter.ToString(buf.Slice(start, dumpLen).ToArray());
         Framework.Logging.Log.Print(Framework.Logging.LogType.Trace,
             $"[Phase5aTrace]   {label} ({len} bytes) head={hex}");
     }
@@ -1665,13 +1656,15 @@ public partial class ObjectUpdateBuilder
 
     private void WriteValuesModern(WorldPacket packet)
     {
-        var valuesBuffer = new WorldPacket();
+        // ByteBuffer rents from ArrayPool and has a finalizer, so an undisposed scratch packet
+        // both leaks the rental and puts one finalizable object per update on the queue.
+        using var valuesBuffer = new WorldPacket();
         if (_updateData.Type == UpdateTypeModern.Values)
             WriteValuesUpdate(valuesBuffer);
         else
             WriteValuesCreate(valuesBuffer);
 
-        var valuesData = valuesBuffer.GetData();
+        ReadOnlySpan<byte> valuesData = valuesBuffer.GetDataSpan();
 
         // Debug: dump the bytes we produce for Values updates so we can compare against
         // TC's accepted format. CMSG_OBJECT_UPDATE_FAILED or `CMSG_LOG_DISCONNECT(reason=7)`
@@ -1687,7 +1680,7 @@ public partial class ObjectUpdateBuilder
             && Framework.Logging.Log.IsEnabled(Framework.Logging.LogType.Debug))
         {
             int dumpLen = System.Math.Min(96, valuesData.Length);
-            string hex = System.BitConverter.ToString(valuesData, 0, dumpLen);
+            string hex = System.BitConverter.ToString(valuesData[..dumpLen].ToArray());
             Framework.Logging.Log.Print(Framework.Logging.LogType.Debug,
                 $"[ValuesUpdateHex] guid={_updateData.Guid} type={_objectType} size={valuesData.Length} hasUnit={_updateData.UnitData != null} hasPlayer={_updateData.PlayerData != null} hasActive={_updateData.ActivePlayerData != null} hasGO={_updateData.GameObjectData != null} hex={hex}");
         }
@@ -1698,7 +1691,7 @@ public partial class ObjectUpdateBuilder
 
     public void WriteToPacket(WorldPacket packet)
     {
-        int startPos = packet.GetData().Length;
+        int startPos = packet.GetWrittenLength();
         bool traceOn = Framework.Logging.Log.IsTraceEnabled;
 
         // Phase 5a diagnostic — log the player's UnitData fields most likely to cause
@@ -1740,10 +1733,12 @@ public partial class ObjectUpdateBuilder
         // is enough to identify which object type was being written.
         if (traceOn && _objectType == ObjectTypeBCC.ActivePlayer)
         {
-            byte[] all = packet.GetData();
+            // Slice the dump window off a span over the live buffer; GetData would copy the
+            // entire packet just to hex its first 80 bytes.
+            ReadOnlySpan<byte> all = packet.GetDataSpan();
             int len = all.Length - startPos;
             int dumpLen = Math.Min(80, len);
-            string hex = BitConverter.ToString(all, startPos, dumpLen);
+            string hex = BitConverter.ToString(all.Slice(startPos, dumpLen).ToArray());
             Framework.Logging.Log.Print(Framework.Logging.LogType.Trace,
                 $"[Phase5aTrace] ActivePlayer packet bytes={len} first80={hex}");
         }
@@ -1755,10 +1750,12 @@ public partial class ObjectUpdateBuilder
             && _updateData.Type != UpdateTypeModern.Values
             && _objectType == ObjectTypeBCC.GameObject)
         {
-            byte[] all = packet.GetData();
+            // Slice the dump window off a span over the live buffer; GetData would copy the
+            // entire packet just to hex its first 200 bytes.
+            ReadOnlySpan<byte> all = packet.GetDataSpan();
             int len = all.Length - startPos;
             int dumpLen = Math.Min(200, len);
-            string hex = BitConverter.ToString(all, startPos, dumpLen);
+            string hex = BitConverter.ToString(all.Slice(startPos, dumpLen).ToArray());
             var moveInfo = _updateData.CreateData?.MoveInfo;
             var go = _updateData.GameObjectData;
             Framework.Logging.Log.Print(Framework.Logging.LogType.Trace,
@@ -1778,10 +1775,12 @@ public partial class ObjectUpdateBuilder
             && _updateData.Type != UpdateTypeModern.Values
             && _updateData.Guid.GetHighType() == HighGuidType.Creature)
         {
-            byte[] all = packet.GetData();
+            // Slice the dump window off a span over the live buffer; GetData would copy the
+            // entire packet just to hex its first 256 bytes.
+            ReadOnlySpan<byte> all = packet.GetDataSpan();
             int len = all.Length - startPos;
             int dumpLen = Math.Min(256, len);
-            string hex = BitConverter.ToString(all, startPos, dumpLen);
+            string hex = BitConverter.ToString(all.Slice(startPos, dumpLen).ToArray());
             Framework.Logging.Log.Print(Framework.Logging.LogType.Trace,
                 $"[CreateObjectHex] guid={_updateData.Guid} entry={_updateData.ObjectData?.EntryID?.ToString() ?? "null"} " +
                 $"type={_objectType} bytes={len} first256={hex}");

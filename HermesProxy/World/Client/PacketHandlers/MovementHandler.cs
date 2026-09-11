@@ -283,7 +283,6 @@ public partial class WorldClient
     [PacketHandler(Opcode.SMSG_MOVE_SPLINE_SET_SWIM_BACK_SPEED)]
     [PacketHandler(Opcode.SMSG_MOVE_SPLINE_SET_SWIM_SPEED)]
     [PacketHandler(Opcode.SMSG_MOVE_SPLINE_SET_TURN_RATE)]
-    [PacketHandler(Opcode.SMSG_MOVE_SPLINE_SET_WALK_BACK_SPEED)]
     [PacketHandler(Opcode.SMSG_MOVE_SPLINE_SET_WALK_SPEED)]
     void HandleMoveSplineSetSpeed(WorldPacket packet)
     {
@@ -424,7 +423,9 @@ public partial class WorldClient
     {
         var uncompressedSize = packet.ReadInt32();
 
-        WorldPacket pkt = packet.Inflate(uncompressedSize);
+        // Inflate hands back a pooled buffer; without the dispose the rental only comes back
+        // via the finalizer.
+        using WorldPacket pkt = packet.Inflate(uncompressedSize);
 
         while (pkt.CanRead())
         {

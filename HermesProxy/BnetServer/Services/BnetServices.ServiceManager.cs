@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Framework.Constants;
 using Google.Protobuf;
@@ -11,6 +12,8 @@ public partial class BnetServices
 {
     public class ServiceManager
     {
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = Trimming.RootedAssembly)]
+        [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = Trimming.RootedAssembly)]
         static ServiceManager()
         {
             // TODO: Replace with compile time generator
@@ -65,7 +68,7 @@ public partial class BnetServices
             }
         }
 
-        public void Invoke(uint serviceId, OriginalHash serviceHash, uint methodId, uint requestToken, CodedInputStream stream)
+        public void Invoke(uint serviceId, OriginalHash serviceHash, uint methodId, uint requestToken, ReadOnlySpan<byte> payload)
         {
             void SendRpcMessage(BattlenetRpcErrorCode status, IMessage? message)
             {
@@ -115,7 +118,7 @@ public partial class BnetServices
                 _serviceHolder.BuildSessionPrefix(), serviceHash, methodId);
 
             var request = (IMessage)Activator.CreateInstance(handler.RequestType)!;
-            request.MergeFrom(stream);
+            request.MergeFrom(payload);
 
             BattlenetRpcErrorCode status;
             if (handler.ResponseType != null)
