@@ -64,7 +64,10 @@ public class ObjectUpdate
             case ObjectType.Item:
             case ObjectType.Container:
                 ItemData = new ItemData();
-                ContainerData = new ContainerData();
+                // ContainerData is not allocated here. A legacy bag and a plain item share a guid
+                // type, so only the parse can tell them apart (from the mask size, or the create's
+                // object type); EnsureContainerData() materialises it on the first container field
+                // written, and every reader already treats null as "no container fields".
                 break;
             case ObjectType.Unit:
                 UnitData = new UnitData();
@@ -99,13 +102,20 @@ public class ObjectUpdate
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ActivePlayerData EnsureActivePlayerData() => ActivePlayerData ??= new ActivePlayerData();
 
+    /// <summary>
+    /// Materialises <see cref="ContainerData"/> on demand. Its 36 slots used to be allocated for
+    /// every item update, bag or not. Call it from write sites; read sites keep using the field.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ContainerData EnsureContainerData() => ContainerData ??= new ContainerData();
+
     public UpdateTypeModern Type;
     public WowGuid128 Guid;
     public GlobalSessionData GlobalSession;
     public CreateObjectData CreateData = null!;
     public ObjectData ObjectData;
     public ItemData ItemData = null!;
-    public ContainerData ContainerData = null!;
+    public ContainerData? ContainerData;
     public UnitData UnitData = null!;
     public PlayerData PlayerData = null!;
     public ActivePlayerData? ActivePlayerData;
@@ -488,7 +498,7 @@ public class ObjectUpdate
             for (int i = 0; i < 6; i++)
             {
                 if (UnitData.ModPowerRegen[i] == null)
-                    UnitData.ModPowerRegen[i] = 1;
+                    UnitData.EnsureModPowerRegen()[i] = 1;
             }
             if (UnitData.Flags2 == null)
                 UnitData.Flags2 = 2048;
@@ -762,21 +772,16 @@ public class UpdateObject : ServerPacket
             if (unit.StandState.HasValue || unit.AnimTier.HasValue) return false;
             if (unit.AttackPower.HasValue || unit.RangedAttackPower.HasValue) return false;
             if (unit.BaseMana.HasValue || unit.BaseHealth.HasValue) return false;
-            if (unit.NpcFlags != null)
-                for (int i = 0; i < unit.NpcFlags.Length; i++)
-                    if (unit.NpcFlags[i].HasValue && unit.NpcFlags[i] != 0) return false;
-            if (unit.Power != null)
-                for (int i = 0; i < unit.Power.Length; i++)
-                    if (unit.Power[i].HasValue) return false;
-            if (unit.MaxPower != null)
-                for (int i = 0; i < unit.MaxPower.Length; i++)
-                    if (unit.MaxPower[i].HasValue) return false;
-            if (unit.Stats != null)
-                for (int i = 0; i < unit.Stats.Length; i++)
-                    if (unit.Stats[i].HasValue) return false;
-            if (unit.Resistances != null)
-                for (int i = 0; i < 7; i++)
-                    if (unit.Resistances[i].HasValue) return false;
+            for (int i = 0; i < unit.NpcFlags.Length; i++)
+                if (unit.NpcFlags[i].HasValue && unit.NpcFlags[i] != 0) return false;
+            for (int i = 0; i < unit.Power.Length; i++)
+                if (unit.Power[i].HasValue) return false;
+            for (int i = 0; i < unit.MaxPower.Length; i++)
+                if (unit.MaxPower[i].HasValue) return false;
+            for (int i = 0; i < unit.Stats.Length; i++)
+                if (unit.Stats[i].HasValue) return false;
+            for (int i = 0; i < 7; i++)
+                if (unit.Resistances[i].HasValue) return false;
         }
         var player = u.PlayerData;
         if (player != null)

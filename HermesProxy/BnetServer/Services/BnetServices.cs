@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Net;
 using System.Reflection;
@@ -102,9 +103,12 @@ public partial class BnetServices
         public readonly ServiceRequirement Requirement;
 
         public readonly Delegate MethodCaller;
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
         public readonly Type RequestType;
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
         public readonly Type ResponseType = null!;
 
+        [UnconditionalSuppressMessage("Trimming", "IL2074", Justification = Trimming.RootedAssembly)]
         public BnetServiceHandlerInfo(ServiceRequirement requirement, MethodInfo info, ParameterInfo[] parameters)
         {
             Requirement = requirement;
@@ -124,6 +128,8 @@ public partial class BnetServices
     public interface INetwork
     {
         public void SendRpcMessage(uint serviceId, OriginalHash service, uint methodId, uint token, BattlenetRpcErrorCode status, IMessage? message);
+
+        /// <summary>Closes the connection once the messages already sent have gone out.</summary>
         public void CloseSocket();
 
         IPEndPoint? GetRemoteIpEndPoint();
